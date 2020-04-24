@@ -14,9 +14,6 @@ from bson.json_util import loads
 
 app = Flask(__name__)
 
-if __name__ == "__main__":
-    print("???")
-    app.run(host='0.0.0.0', debug=True)
 
 secret_key = b'@\xb8\xc0\x11\x95\xa9d)\xd4s\xad9\t\xdb\xea"'
 app.config['SECRET_KEY'] = secret_key
