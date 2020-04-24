@@ -1,5 +1,6 @@
 import os
 from flask import Flask, request, jsonify, make_response
+from flask_cors import CORS, cross_origin
 
 import pymongo 
 
@@ -12,7 +13,10 @@ import json
 from bson.json_util import dumps
 from bson.json_util import loads
 
+from decouple import config
+
 app = Flask(__name__)
+CORS(app)
 
 
 secret_key = b'@\xb8\xc0\x11\x95\xa9d)\xd4s\xad9\t\xdb\xea"'
@@ -50,6 +54,11 @@ def user():
             res = {
                 'status': 200,
                 'data': data
+            }
+        else:
+            res = {
+                'status': 200,
+                'data': "존재하지 않는 유저입니다"
             }
         return jsonify(res)
     
@@ -358,3 +367,7 @@ def all_recipes():
         "status": 200,
         "data": datas
     })
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=True)
