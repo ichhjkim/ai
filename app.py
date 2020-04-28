@@ -12,12 +12,13 @@ import base64
 import json
 from bson.json_util import dumps
 from bson.json_util import loads
+import ast
 
 from decouple import config
+import itertools
 
 app = Flask(__name__)
 CORS(app)
-
 
 secret_key = b'@\xb8\xc0\x11\x95\xa9d)\xd4s\xad9\t\xdb\xea"'
 app.config['SECRET_KEY'] = secret_key
@@ -31,10 +32,7 @@ db = client.recipes
 
 users = db.user_collection
 foods = db.food_collection
-barcodes = db.barcode_collection
-meats = db.meat_collection
-vegets = db.vegets_collection
-
+ingredient_collection = db.ingredient_collection
 
 # 유저 정보 가입, 조회, 삭제, 비밀번호 변경
 
@@ -178,6 +176,7 @@ def ingredient_manage():
         exist_ingredients = users.find_one({"username": username}).get("ingredients")
 
         if not exist_ingredients: exist_ingredients = {}
+        #else: exist_ingredients = json.loads(exist_ingredients.replace("'", "\""))
 
         if way == 'image':
 
@@ -190,34 +189,29 @@ def ingredient_manage():
         
         elif way == 'barcode':
 
-            get_ingredient = barcodes.find_one({
-                "number" : new_ingredients.get('datas')
-            })
-            if get_ingredient:
-                product_name = get_ingredient.get('product_name')
-                user_product = exist_ingredients.get(product_name)
-
-                if user_product: exist_ingredients[product_name] += 1
-                else: exist_ingredients[product_name] = 1
-
-                users.find_and_modify(
-                    query={"username": username},
-                    update={"$set": {"ingredients": exist_ingredients}}
-                )
-
-                res = {
-                    "status": 200,
-                    "data": "재료가 성공적으로 추가되었습니다."
-                    }
-
-                return jsonify(res)
+             ds = new_ingredients.get('datas')
             
-            else:
-                res = {
-                    "status": 200,
-                    "data": "존재하는 데이터가 없습니다."
-                }
-                return jsonify(res)
+            for k, v in ds.items():
+                print(k, v)
+                t = exist_ingredients.get(k)
+                if not t: 
+                    ig = ingredient_collection.find_one({"name":k},{"_id":0}).get('image')
+                    if ig:exist_ingredients[k] = ig
+                    else:exist_ingredients[k] = 1
+
+            users.find_and_modify(
+                query={"username": username},
+                update={"$set": {"ingredients": exist_ingredients}}
+            )
+            result = users.find_one({
+            "username": username
+            },{"_id":0}).get('ingredients')
+
+            res = {
+                "status": 200,
+                "data": result
+            }
+            return jsonify(res)
 
         
         elif way == "text":
@@ -226,17 +220,22 @@ def ingredient_manage():
             for k, v in ds.items():
                 print(k, v)
                 t = exist_ingredients.get(k)
-                if t: exist_ingredients[k] = ds[k]
-                else: exist_ingredients[k] = ds[k]
+                if not t: 
+                    ig = ingredient_collection.find_one({"name":k},{"_id":0}).get('image')
+                    if ig:exist_ingredients[k] = ig
+                    else:exist_ingredients[k] = 1
 
             users.find_and_modify(
                 query={"username": username},
                 update={"$set": {"ingredients": exist_ingredients}}
             )
+            result = users.find_one({
+            "username": username
+            },{"_id":0}).get('ingredients')
 
             res = {
                 "status": 200,
-                "data": "재료가 성공적으로 추가되었습니다."
+                "data": result
             }
             return jsonify(res)
     
@@ -250,17 +249,21 @@ def ingredient_manage():
 
         for k, v in user_ingredients.items():
             t = exist_ingredients.get(k)
-            if t: exist_ingredients[k] = 0
+            if t:
+                a = exist_ingredients.pop(k)
+                print(a)
+                
         
-
         users.find_and_modify(
             query={"username": username},
             update={"$set": {"ingredients": exist_ingredients}}
         )
-
+        result = users.find_one({
+            "username": username
+        },{"_id":0}).get('ingredients')
         res = {
             "status": 200,
-            "data": "재료가 성공적으로 삭제되었습니다."
+            "data": result
         }
         return jsonify(res)
 
@@ -330,20 +333,32 @@ def get_recipes():
     ingredients = request.args.get('ingredients')
     ingredients = json.loads(ingredients)
 
-    search_ingredients = []
-    for k, v in ingredients.items():
-        new = {}
-        temp = "all_ingredients."+k
-        new[temp] = {"$exists": True }
-        search_ingredients.append(new)
-    
-    all_recipes = foods.find({ "$or" : search_ingredients},{"_id":0}).limit(20)
-    all_recipes = loads(dumps(all_recipes, ensure_ascii=False))
- 
-
+    ingredients_length = len(ingredients.keys())
+    result = []
+    for i in range(ingredients_length, 0, -1):
+        combination_ingredients = itertools.combinations(ingredients.keys(), i)
+        for combination_ingredient in combination_ingredients:
+            search_ingredients = []
+            for k in combination_ingredient:
+                if not k: continue
+                new = {}
+                temp = "all_ingredients."+k
+                new[temp] = {"$exists": True }
+                search_ingredients.append(new)
+            else:
+                all_recipes = foods.find({ "$and" : search_ingredients},{"_id":0, "process":0, "all_ingredients":0} ).limit(15)
+                all_recipes = loads(dumps(all_recipes, ensure_ascii=False))
+                for all_recipe in all_recipes:
+                    if all_recipe not in result: result.append(all_recipe)
+                    if len(result) >= 15:
+                        return jsonify({
+                                "status": 200,
+                                "data": result
+                            })
+                    
     return jsonify({
         "status": 200,
-        "data": all_recipes
+        "data": result
     })
 
 
@@ -360,7 +375,7 @@ def recipe_detail():
 @app.route('/all_recipes', methods=["GET"])
 def all_recipes():
 
-    datas = foods.find({},{"_id":0})
+    datas = foods.find({},{"_id":0, "process":0, "all_ingredients":0})
     datas = loads(dumps(datas, ensure_ascii=False))
     print(datas)
     return jsonify({
