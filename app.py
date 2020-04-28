@@ -189,7 +189,7 @@ def ingredient_manage():
         
         elif way == 'barcode':
 
-             ds = new_ingredients.get('datas')
+            ds = new_ingredients.get('datas')
             
             for k, v in ds.items():
                 print(k, v)
