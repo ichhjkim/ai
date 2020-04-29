@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS, cross_origin
-
+import datetime
 import pymongo 
 
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_jwt_claims
@@ -90,7 +90,8 @@ def user():
             }
             
             users.insert_one(user)
-            access_token = create_access_token(identity=username)
+            expires = datetime.timedelta(days=14)
+            access_token = create_access_token(identity=username, expires_delta=expires)
 
             return jsonify({
                 'status': 200,
@@ -295,8 +296,8 @@ def user_login():
             check_pw = bcrypt.check_password_hash(db_check.get("password"), password)
     
             if db_check and check_pw:
-                
-                access_token = create_access_token(identity=username)
+                expires = datetime.timedelta(days=14)
+                access_token = create_access_token(identity=username, expires_delta=expires)
                 
                 return jsonify({
                     "status": 200,
@@ -386,3 +387,8 @@ def all_recipes():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
+
+@app.route('/user_image', methods=['GET'])
+def user_image():
+
+    username = request.args.get('username')
