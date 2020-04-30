@@ -188,9 +188,10 @@ def ingredient_manage():
             #img = img.decode('ascii')
             
             # 텐서플로우 이미지 분석 결과
-            filename = 'data/user_photo.jpg'
+            filename = 'user_photo.jpg'
             img_data = base64.b64decode(temp_img)
             print(img_data)
+            print(os.path.realpath(__file__), 'app.py 경로')
             with open(filename, 'wb') as f:
                 f.write(img_data)
                 print('파일이 저장되었습니다')
