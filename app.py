@@ -17,7 +17,7 @@ import ast
 from decouple import config
 import itertools
 
-from YOLO3-4-Py import YOLO_image
+from YOLOAI.YOLO_image import YOLO
 
 app = Flask(__name__)
 CORS(app)
@@ -194,7 +194,7 @@ def ingredient_manage():
                 f.write(img_data)
                 print('파일이 저장되었습니다')
             
-            result = YOLO_image.image(img)
+            result = YOLO(img)
         
         elif way == 'barcode':
 
