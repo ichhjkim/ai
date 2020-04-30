@@ -194,7 +194,7 @@ def ingredient_manage():
                 f.write(img_data)
                 print('파일이 저장되었습니다')
             
-            result = YOLO(img)
+            result = YOLO(filename)
         
         elif way == 'barcode':
 
